@@ -1,80 +1,164 @@
 import React, { useEffect, useState } from "react";
 
 export default function App() {
-  const [tasks, setTasks] = useState([]);
-  const [title, setTitle] = useState("");
+  const [habits, setHabits] = useState([]);
+  const [input, setInput] = useState("");
   const [error, setError] = useState("");
 
-  const fetchTasks = async () => {
+  const fetchHabits = async () => {
     try {
-      const res = await fetch("/api/tasks");
-      if (!res.ok) throw new Error("Failed to load");
+      const res = await fetch("/api/habits");
+      if (!res.ok) throw new Error("Failed");
       const data = await res.json();
-      setTasks(data);
+      setHabits(Array.isArray(data) ? data : []);
       setError("");
-    } catch {
+    } catch (err) {
       setError("Backend unreachable");
     }
   };
 
   useEffect(() => {
-    fetchTasks();
+    fetchHabits();
   }, []);
 
   const handleAdd = async (e) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!input.trim()) return;
+    await fetch("/api/habits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: input }),
+    });
+    setInput("");
+    fetchHabits();
+  };
 
-    try {
-      const res = await fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title }),
-      });
-      if (!res.ok) throw new Error("Failed to add");
-      const created = await res.json();
-      setTasks([...tasks, created]);
-      setTitle("");
-      setError("");
-    } catch {
-      setError("Could not save task");
-    }
+  const handleToggle = async (id) => {
+    await fetch(`/api/habits/${id}`, { method: "PUT" });
+    fetchHabits();
   };
 
   return (
-    <div style={styles.container}>
+    <div style={styles.page}>
       <div style={styles.card}>
-        <h2 style={styles.heading}>DevOps Task Tracker</h2>
+        <h1 style={styles.title}>Daily Habit Tracker</h1>
+
+        {error && <p style={styles.error}>{error}</p>}
+
         <form onSubmit={handleAdd} style={styles.form}>
           <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="New deployment task..."
+            type="text"
+            placeholder="New daily habit..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
             style={styles.input}
           />
-          <button type="submit" style={styles.button}>Add</button>
+          <button type="submit" style={styles.button}>
+            Add
+          </button>
         </form>
-        {error && <p style={styles.error}>{error}</p>}
-        <ul style={styles.list}>
-          {tasks.map((t) => (
-            <li key={t.id} style={styles.item}>
-              {t.done ? "✅" : "⏳"} {t.title}
-            </li>
+
+        <div style={styles.list}>
+          {habits.map((item) => (
+            <div
+              key={item.id}
+              onClick={() => handleToggle(item.id)}
+              style={styles.row}
+            >
+              <span style={styles.icon}>{item.completed ? "🔥" : "🎯"}</span>
+              <span
+                style={{
+                  ...styles.text,
+                  textDecoration: item.completed ? "line-through" : "none",
+                  opacity: item.completed ? 0.75 : 1,
+                }}
+              >
+                {item.title}
+              </span>
+            </div>
           ))}
-        </ul>
+        </div>
       </div>
     </div>
   );
 }
 
 const styles = {
-  container: { minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", background: "#0f172a", fontFamily: "sans-serif" },
-  card: { background: "#1e293b", color: "#f8fafc", padding: "30px", borderRadius: "12px", width: "100%", maxWidth: "400px" },
-  heading: { margin: "0 0 16px", color: "#38bdf8", textAlign: "center" },
-  form: { display: "flex", gap: "8px", marginBottom: "16px" },
-  input: { flex: 1, padding: "10px", borderRadius: "6px", border: "1px solid #334155", background: "#0f172a", color: "#fff" },
-  button: { padding: "10px 16px", borderRadius: "6px", border: "none", background: "#0284c7", color: "#fff", fontWeight: "bold", cursor: "pointer" },
-  error: { color: "#f87171", fontSize: "14px", textAlign: "center" },
-  list: { listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "8px" },
-  item: { background: "#0f172a", padding: "10px 12px", borderRadius: "6px", fontSize: "14px" },
+  page: {
+    minHeight: "100vh",
+    backgroundColor: "#0b1322",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: "24px",
+    fontFamily: "system-ui, -apple-system, sans-serif",
+  },
+  card: {
+    width: "100%",
+    maxWidth: "560px",
+    backgroundColor: "#162032",
+    borderRadius: "14px",
+    padding: "36px 40px",
+    boxShadow: "0 12px 30px rgba(0, 0, 0, 0.45)",
+  },
+  title: {
+    color: "#38bdf8",
+    textAlign: "center",
+    fontSize: "2rem",
+    fontWeight: "700",
+    margin: "0 0 26px 0",
+  },
+  error: {
+    color: "#f87171",
+    textAlign: "center",
+    marginBottom: "14px",
+    fontSize: "0.9rem",
+  },
+  form: {
+    display: "flex",
+    gap: "12px",
+    marginBottom: "22px",
+  },
+  input: {
+    flex: 1,
+    backgroundColor: "#0b1322",
+    border: "1px solid #2b3952",
+    borderRadius: "8px",
+    padding: "13px 16px",
+    color: "#f8fafc",
+    fontSize: "1rem",
+    outline: "none",
+  },
+  button: {
+    backgroundColor: "#0ea5e9",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "8px",
+    padding: "0 22px",
+    fontSize: "1rem",
+    fontWeight: "700",
+    cursor: "pointer",
+  },
+  list: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+  },
+  row: {
+    backgroundColor: "#0b1322",
+    borderRadius: "8px",
+    padding: "15px 18px",
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    cursor: "pointer",
+  },
+  icon: {
+    fontSize: "1.1rem",
+  },
+  text: {
+    color: "#f8fafc",
+    fontSize: "1.05rem",
+    fontWeight: "500",
+  },
 };
